@@ -18,6 +18,7 @@ import {
   KeyRound,
   Award,
   FolderArchive,
+  DollarSign,
 } from 'lucide-react';
 import { ConstructionProject, NavigationTab } from '../../types';
 import { DirectLinePanel } from './DirectLinePanel';
@@ -36,6 +37,7 @@ import { ProjectCloseoutPanel } from './ProjectCloseoutPanel';
 import { ProjectHandoverPanel } from './ProjectHandoverPanel';
 import { ExecutiveDashboardPanel } from './ExecutiveDashboardPanel';
 import { FinalProjectRecordPanel } from './FinalProjectRecordPanel';
+import { FinancialExecutionPanel } from './FinancialExecutionPanel';
 import { useAuth } from '../../context/AuthContext';
 
 interface ProjectOperationsWorkspaceProps {
@@ -64,6 +66,7 @@ export const ProjectOperationsWorkspace: React.FC<ProjectOperationsWorkspaceProp
     | 'closeout'
     | 'handover'
     | 'final_record'
+    | 'financial'
     | 'direct_line'
     | 'rfis'
   >('executive');
@@ -259,6 +262,19 @@ export const ProjectOperationsWorkspace: React.FC<ProjectOperationsWorkspaceProp
           </button>
 
           <button
+            id="tab-btn-financial"
+            onClick={() => setActiveSubTab('financial')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+              activeSubTab === 'financial'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-white/5 text-slate-300 hover:bg-white/10'
+            }`}
+          >
+            <DollarSign className="w-3.5 h-3.5" />
+            <span>Financial Execution</span>
+          </button>
+
+          <button
             onClick={() => setActiveSubTab('ai_inspection')}
             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition ${
               activeSubTab === 'ai_inspection'
@@ -368,6 +384,8 @@ export const ProjectOperationsWorkspace: React.FC<ProjectOperationsWorkspaceProp
           userRole={resolvedRole}
           onNavigateToTab={(tab: string) => setActiveSubTab(tab as any)}
         />
+      ) : activeSubTab === 'financial' ? (
+        <FinancialExecutionPanel projectId={project.id} isDemo={project.isDemo} />
       ) : activeSubTab === 'ai_inspection' ? (
         <AIInspectionPanel projectId={project.id} isDemo={project.isDemo} />
       ) : activeSubTab === 'owner_decision' ? (

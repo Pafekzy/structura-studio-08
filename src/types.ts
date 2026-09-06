@@ -504,7 +504,17 @@ export type AuditAction =
   | 'PROJECT_HANDOVER_COMPLETED'
   | 'AI_EXECUTIVE_BRIEFING_REQUESTED'
   | 'AI_EXECUTIVE_BRIEFING_COMPLETED'
-  | 'AI_EXECUTIVE_BRIEFING_FAILED';
+  | 'AI_EXECUTIVE_BRIEFING_FAILED'
+  | 'FINANCIAL_INSTRUCTION_CREATED'
+  | 'FINANCIAL_PROCESSING_REQUESTED'
+  | 'FINANCIAL_PROVIDER_UNAVAILABLE'
+  | 'FINANCIAL_PROVIDER_ACCEPTED'
+  | 'FINANCIAL_PROVIDER_REJECTED'
+  | 'FINANCIAL_PROCESSING_FAILED'
+  | 'PAYMENT_CONFIRMATION_RECEIVED'
+  | 'SETTLEMENT_CONFIRMED'
+  | 'FINANCIAL_RECONCILIATION_REQUIRED'
+  | 'FINANCIAL_RECONCILIATION_COMPLETED';
 
 export interface AuditEvent {
   id: string;
@@ -1105,7 +1115,8 @@ export type ProjectMemorySourceType =
   | 'OWNER_DECISION'
   | 'PROJECT_DECISION'
   | 'RFI'
-  | 'DIRECT_LINE';
+  | 'DIRECT_LINE'
+  | 'FINANCIAL_INSTRUCTION';
 
 export type ProjectMemoryCategory =
   | 'ALL'
@@ -1569,6 +1580,10 @@ export interface ExecutiveProjectReport {
     authorizedForFinancialProcessingUSD: number;
     financialProcessingStatus: string;
     note: string;
+    activeInstructionsCount?: number;
+    settledAmountUSD?: number;
+    providerConnected?: boolean;
+    requiresReconciliationCount?: number;
   };
   disclaimer: string;
 }
@@ -1588,6 +1603,7 @@ export interface FinalProjectRecordPackage {
     punchItems: PunchItem[];
     closeout: ProjectCloseout | null;
     handover: ProjectHandover | null;
+    financialInstructions?: FinancialInstruction[];
   };
   auditTrail: AuditEvent[];
   archivalStatus: 'ACTIVE_GOVERNANCE' | 'ARCHIVED';
@@ -1610,5 +1626,91 @@ export interface AIExecutiveBriefing {
   sourceRecordRefs: ProjectRecordRef[];
   disclaimer: string;
   errorMessage?: string;
+}
+
+// ==========================================
+// Financial Execution Domain & BMONI Provider Boundary (Sprint 05B)
+// ==========================================
+
+export type FinancialExecutionStatus =
+  | 'NOT_AUTHORIZED'
+  | 'AUTHORIZED_FOR_FINANCIAL_PROCESSING'
+  | 'PROCESSING_NOT_STARTED'
+  | 'PROCESSING'
+  | 'PROVIDER_ACCEPTED'
+  | 'PROVIDER_REJECTED'
+  | 'PAYMENT_CONFIRMED'
+  | 'SETTLEMENT_PENDING'
+  | 'SETTLED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'REQUIRES_RECONCILIATION';
+
+export type FinancialProviderStatus =
+  | 'NOT_CONNECTED'
+  | 'UNAVAILABLE'
+  | 'REQUEST_CREATED'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'CONFIRMED'
+  | 'SETTLED'
+  | 'FAILED'
+  | 'UNKNOWN';
+
+export interface SettlementRecord {
+  settlementId: string;
+  settledAmountUSD: number;
+  settledCurrency: string;
+  settledAt: string;
+  providerReference: string;
+  verifiedByProviderEvidence: boolean;
+  evidencePayloadHash?: string;
+  settlementNotes?: string;
+}
+
+export type ReconciliationStatus = 'PENDING' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED';
+
+export interface ReconciliationRecord {
+  reconciliationId: string;
+  status: ReconciliationStatus;
+  reason: string;
+  detectedDiscrepancy: string;
+  localStatus: FinancialExecutionStatus;
+  providerStatus: FinancialProviderStatus | string;
+  resolutionNotes?: string;
+  resolvedByUserId?: string;
+  resolvedAt?: string;
+  createdAt: string;
+}
+
+export interface FinancialInstruction {
+  id: string;
+  instructionNumber: string; // e.g. FIN-001
+  projectId: string;
+  milestoneId: string;
+  ownerDecisionId: string;
+  amountUSD: number;
+  currency: string;
+  contractorUserId: string;
+  contractorName?: string;
+  status: FinancialExecutionStatus;
+  idempotencyKey: string;
+  providerId: 'BMONI' | string;
+  providerStatus: FinancialProviderStatus;
+  providerReference?: string;
+  providerTransactionId?: string;
+  providerRawResponse?: Record<string, any>;
+  executionNotes?: string;
+  failureReason?: string;
+  settlementRecord?: SettlementRecord;
+  reconciliationRecord?: ReconciliationRecord;
+  createdByUserId: string;
+  createdByRole: ProjectRole;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  processedAt?: string;
+  settledAt?: string;
+  isDemo?: boolean;
 }
 

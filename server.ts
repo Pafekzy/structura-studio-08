@@ -14,6 +14,7 @@ import { punchItemRouter } from './server/routes/punchItemRoutes';
 import { closeoutRouter } from './server/routes/closeoutRoutes';
 import { handoverRouter } from './server/routes/handoverRoutes';
 import { executiveReportingRouter } from './server/routes/executiveReportingRoutes';
+import { financialRouter } from './server/routes/financialRoutes';
 import { ensureDemoDataSeeded } from './server/data/demoSeed';
 
 dotenv.config();
@@ -50,6 +51,9 @@ app.use('/api', punchItemRouter);
 app.use('/api', closeoutRouter);
 app.use('/api', handoverRouter);
 app.use('/api', executiveReportingRouter);
+
+// Financial Execution Readiness & BMONI Provider Boundary (Sprint 05B)
+app.use('/api', financialRouter);
 
 // Lazy initialization of GoogleGenAI
 let aiClient: GoogleGenAI | null = null;

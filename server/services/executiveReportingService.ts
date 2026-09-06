@@ -13,6 +13,8 @@ import { punchItemRepository } from '../repositories/punchItemRepository';
 import { closeoutRepository } from '../repositories/closeoutRepository';
 import { handoverRepository } from '../repositories/handoverRepository';
 import { auditEventRepository } from '../repositories/auditEventRepository';
+import { financialInstructionRepository } from '../repositories/financialInstructionRepository';
+import { bmoniAdapter } from './financial/bmoniAdapter';
 import { userRepository } from '../repositories/userRepository';
 import { GovernanceError } from './governanceError';
 import {
@@ -87,6 +89,7 @@ export class ExecutiveReportingService {
       punchItems,
       closeout,
       handover,
+      financialInstructions,
     ] = await Promise.all([
       milestoneRepository.listMilestonesByProject(projectId),
       submissionRepository.listSubmissionsByProject(projectId),
@@ -100,6 +103,7 @@ export class ExecutiveReportingService {
       punchItemRepository.listPunchItemsByProject(projectId),
       closeoutRepository.getCloseoutByProject(projectId),
       handoverRepository.getHandoverByProject(projectId),
+      financialInstructionRepository.listByProject(projectId),
     ]);
 
     // Compute Milestone Progress Summary
@@ -416,6 +420,14 @@ export class ExecutiveReportingService {
     };
 
     // Financial Governance Card
+    const settledAmountUSD = financialInstructions
+      .filter((i) => i.status === 'SETTLED')
+      .reduce((sum, i) => sum + i.amountUSD, 0);
+    const requiresReconciliationCount = financialInstructions.filter(
+      (i) => i.status === 'REQUIRES_RECONCILIATION'
+    ).length;
+    const providerConnection = bmoniAdapter.getConnectionStatus();
+
     const financialGovernance = {
       totalBaselineBudgetUSD: totalCostAllocationUSD,
       costAllocationTotalUSD: totalCostAllocationUSD,
@@ -425,7 +437,11 @@ export class ExecutiveReportingService {
         : financiallyAuthorizedUSD > 0
         ? 'PARTIALLY_AUTHORIZED'
         : 'PENDING_GOVERNANCE',
-      note: 'AUTHORIZED_FOR_FINANCIAL_PROCESSING represents governed technical milestone acceptance. It does NOT represent automated money movement or settlement. BMONI is NOT integrated in Sprint 05A.',
+      note: 'STRUCTURA determines WHY payment is authorized via governed technical milestone acceptance. Financial execution instructions are dispatched to external provider (BMONI) via an idempotent adapter boundary. AUTHORIZED_FOR_FINANCIAL_PROCESSING ≠ PAID ≠ SETTLED.',
+      activeInstructionsCount: financialInstructions.length,
+      settledAmountUSD,
+      providerConnected: providerConnection.status === 'CONNECTED',
+      requiresReconciliationCount,
     };
 
     const report: ExecutiveProjectReport = {
@@ -491,6 +507,7 @@ export class ExecutiveReportingService {
       closeout,
       handover,
       recentAuditEvents,
+      financialInstructions,
     ] = await Promise.all([
       milestoneRepository.listMilestonesByProject(projectId),
       evidenceRepository.listEvidenceByProject(projectId),
@@ -504,6 +521,7 @@ export class ExecutiveReportingService {
       closeoutRepository.getCloseoutByProject(projectId),
       handoverRepository.getHandoverByProject(projectId),
       auditEventRepository.listByProject(projectId),
+      financialInstructionRepository.listByProject(projectId),
     ]);
 
     return {
@@ -521,6 +539,7 @@ export class ExecutiveReportingService {
         punchItems,
         closeout,
         handover,
+        financialInstructions,
       },
       auditTrail: recentAuditEvents.slice(0, 50) as any,
       archivalStatus: handover?.status === 'HANDOVER_COMPLETE' ? 'ARCHIVED' : 'ACTIVE_GOVERNANCE',

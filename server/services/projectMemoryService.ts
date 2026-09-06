@@ -12,6 +12,7 @@ import { rfiRepository } from '../repositories/rfiRepository';
 import { directLineRepository } from '../repositories/directLineRepository';
 import { evidenceRepository } from '../repositories/evidenceRepository';
 import { auditEventRepository } from '../repositories/auditEventRepository';
+import { financialInstructionRepository } from '../repositories/financialInstructionRepository';
 import { GovernanceError } from './governanceError';
 import {
   ProjectMemoryEntry,
@@ -91,6 +92,7 @@ export class ProjectMemoryService {
       directLineMessages,
       evidenceList,
       auditEvents,
+      financialInstructions,
     ] = await Promise.all([
       milestoneRepository.listMilestonesByProject(projectId).catch(() => []),
       submissionRepository.listSubmissionsByProject(projectId).catch(() => []),
@@ -108,6 +110,7 @@ export class ProjectMemoryService {
       ]).then(([m1, m2, m3]) => [...m1, ...m2, ...m3]).catch(() => []),
       evidenceRepository.listEvidenceByProject(projectId).catch(() => []),
       auditEventRepository.listByProject(projectId).catch(() => []),
+      financialInstructionRepository.listInstructionsByProject(projectId).catch(() => []),
     ]);
 
     const entries: ProjectMemoryEntry[] = [];
@@ -412,6 +415,35 @@ export class ProjectMemoryService {
           evidenceType: ev.evidenceType,
           fileName: ev.fileName,
           fileSize: ev.fileSize,
+        },
+      });
+    }
+
+    // 12. Financial Instructions (Sprint 05B)
+    for (const fi of financialInstructions) {
+      entries.push({
+        id: `mem-fin-${fi.id}`,
+        projectId,
+        timestamp: fi.createdAt,
+        sourceType: 'FINANCIAL_INSTRUCTION',
+        sourceId: fi.id,
+        eventType: `FINANCIAL_${fi.status}`,
+        category: 'FINANCIAL',
+        title: `Financial Instruction: ${fi.instructionNumber}`,
+        summary: `Disbursement of $${fi.amountUSD.toLocaleString()} for milestone ${fi.milestoneTitle}. Status: ${fi.status}. Provider: ${fi.providerName} (${fi.providerStatus}).`,
+        actorUserId: fi.authorizedByUserId,
+        actorRole: fi.authorizedByRole,
+        actorName: fi.authorizedByName,
+        resultingState: fi.status,
+        relatedMilestoneId: fi.milestoneId,
+        milestoneId: fi.milestoneId,
+        metadata: {
+          instructionNumber: fi.instructionNumber,
+          amountUSD: fi.amountUSD,
+          status: fi.status,
+          providerStatus: fi.providerStatus,
+          providerTransactionReference: fi.providerTransactionReference,
+          settlementConfirmedAt: fi.settlementConfirmedAt,
         },
       });
     }

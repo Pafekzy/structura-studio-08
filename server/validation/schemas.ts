@@ -440,3 +440,55 @@ export const requestAIExecutiveBriefingSchema = z.object({
   focusArea: z.enum(['FULL_BRIEFING', 'RISK_FOCUSED', 'CLOSEOUT_FOCUSED', 'FINANCIAL_GOVERNANCE']).optional().default('FULL_BRIEFING'),
   includeHistoricalDecisions: z.boolean().optional().default(true),
 });
+
+// Part Y: Financial Execution & BMONI Provider Boundary Schemas (Sprint 05B)
+export const createFinancialInstructionSchema = z.object({
+  milestoneId: z.string().min(1, 'Milestone ID is required'),
+  idempotencyKey: z.string().min(1, 'Idempotency key is required').max(128),
+  amountUSD: z.number().positive().optional(),
+  executionNotes: z.string().max(2000).optional(),
+});
+
+export const processFinancialInstructionSchema = z.object({
+  notes: z.string().max(2000).optional(),
+});
+
+export const reconcileInstructionSchema = z.object({
+  forceDivergenceCheck: z.boolean().optional(),
+  reason: z.string().max(2000).optional(),
+});
+
+export const resolveReconciliationSchema = z.object({
+  resolutionNotes: z.string().min(5, 'Resolution notes are required').max(3000),
+  targetStatus: z.enum([
+    'NOT_AUTHORIZED',
+    'AUTHORIZED_FOR_FINANCIAL_PROCESSING',
+    'PROCESSING_NOT_STARTED',
+    'PROCESSING',
+    'PROVIDER_ACCEPTED',
+    'PROVIDER_REJECTED',
+    'PAYMENT_CONFIRMED',
+    'SETTLEMENT_PENDING',
+    'SETTLED',
+    'FAILED',
+    'CANCELLED',
+    'REQUIRES_RECONCILIATION',
+  ]),
+});
+
+export const bmoniWebhookSchema = z.object({
+  eventId: z.string().optional(),
+  id: z.string().optional(),
+  eventType: z.string().optional(),
+  type: z.string().optional(),
+  status: z.string().optional(),
+  instructionId: z.string().optional(),
+  disbursementReference: z.string().optional(),
+  providerReference: z.string().optional(),
+  transactionId: z.string().optional(),
+  amount: z.number().optional(),
+  currency: z.string().optional(),
+  settledAt: z.string().optional(),
+  notes: z.string().optional(),
+  reason: z.string().optional(),
+}).passthrough();
