@@ -746,7 +746,7 @@ export class FinancialExecutionService {
       id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
       actorUserId: userId,
       projectId,
-      action: 'FINANCIAL_RECONCILIATION_COMPLETED',
+      action: 'FINANCIAL_RECONCILIATION_RESOLVED',
       entityType: 'FINANCIAL_INSTRUCTION',
       entityId: instructionId,
       timestamp: now,
@@ -788,15 +788,6 @@ export class FinancialExecutionService {
    */
   async getProjectFinancialInstructions(projectId: string, userId: string): Promise<FinancialInstruction[]> {
     return this.listInstructions(projectId, userId);
-  }
-
-    const instructions = await financialInstructionRepository.listInstructionsByProject(projectId);
-
-    if (role === 'GENERAL_CONTRACTOR') {
-      return instructions.filter((inst) => inst.contractorUserId === userId);
-    }
-
-    return instructions;
   }
 
   /**
@@ -950,7 +941,7 @@ STRICT GUARDRAILS:
       governanceStatus,
       providerStatus: currentProviderStatus,
       isAiAssisted,
-      disclaimer: 'AI-assisted financial governance explanation. AI does not possess authority to authorize, disburse, or settle payments. All financial execution requires verified provider confirmation and governed human authorization.',
+      disclaimer: 'AI is an explanatory advisor only. AI CANNOT authorize payments, release funds, or trigger settlement. All financial execution requires verified provider confirmation and governed human authorization.',
     };
   }
 }

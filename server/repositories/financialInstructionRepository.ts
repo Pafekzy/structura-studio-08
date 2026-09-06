@@ -6,10 +6,12 @@ import { FinancialInstruction } from '../../src/types';
 export interface IFinancialInstructionRepository {
   createInstruction(instruction: FinancialInstruction): Promise<FinancialInstruction>;
   getInstructionById(id: string): Promise<FinancialInstruction | null>;
+  findById(id: string): Promise<FinancialInstruction | null>;
   getInstructionByIdempotencyKey(projectId: string, idempotencyKey: string): Promise<FinancialInstruction | null>;
   getInstructionByMilestoneId(milestoneId: string): Promise<FinancialInstruction | null>;
   listInstructionsByProject(projectId: string): Promise<FinancialInstruction[]>;
   updateInstruction(id: string, updates: Partial<FinancialInstruction>): Promise<FinancialInstruction | null>;
+  update(id: string, updates: Partial<FinancialInstruction>): Promise<FinancialInstruction | null>;
   getNextInstructionNumber(projectId: string): Promise<string>;
   countInstructions(projectId: string): Promise<number>;
 }
@@ -97,6 +99,10 @@ class FinancialInstructionRepository implements IFinancialInstructionRepository 
     return null;
   }
 
+  async findById(id: string): Promise<FinancialInstruction | null> {
+    return this.getInstructionById(id);
+  }
+
   async getInstructionByIdempotencyKey(projectId: string, idempotencyKey: string): Promise<FinancialInstruction | null> {
     this.ensureLoaded();
     for (const item of this.cache.values()) {
@@ -154,6 +160,10 @@ class FinancialInstructionRepository implements IFinancialInstructionRepository 
       }
     }
     return updated;
+  }
+
+  async update(id: string, updates: Partial<FinancialInstruction>): Promise<FinancialInstruction | null> {
+    return this.updateInstruction(id, updates);
   }
 
   async getNextInstructionNumber(projectId: string): Promise<string> {

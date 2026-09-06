@@ -437,7 +437,7 @@ export class ExecutiveReportingService {
         : financiallyAuthorizedUSD > 0
         ? 'PARTIALLY_AUTHORIZED'
         : 'PENDING_GOVERNANCE',
-      note: 'STRUCTURA determines WHY payment is authorized via governed technical milestone acceptance. Financial execution instructions are dispatched to external provider (BMONI) via an idempotent adapter boundary. AUTHORIZED_FOR_FINANCIAL_PROCESSING ≠ PAID ≠ SETTLED.',
+      note: 'STRUCTURA determines WHY payment is authorized via governed technical milestone acceptance. BMONI is NOT integrated directly for auto-settlement (No BMONI direct fund release without verified provider credentials). Financial execution instructions are dispatched via an idempotent adapter boundary. AUTHORIZED_FOR_FINANCIAL_PROCESSING ≠ PAID ≠ SETTLED.',
       activeInstructionsCount: financialInstructions.length,
       settledAmountUSD,
       providerConnected: providerConnection.status === 'CONNECTED',

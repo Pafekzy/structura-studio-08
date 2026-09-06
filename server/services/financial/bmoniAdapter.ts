@@ -27,7 +27,7 @@ export class BmoniAdapter implements IFinancialProviderAdapter {
   constructor() {
     this.apiKey = process.env.BMONI_API_KEY;
     this.apiUrl = process.env.BMONI_API_URL;
-    this.webhookSecret = process.env.BMONI_WEBHOOK_SECRET;
+    this.webhookSecret = process.env.BMONI_WEBHOOK_SECRET || 'structura_bmoni_webhook_secret_dev';
   }
 
   isConfigured(): boolean {
@@ -66,6 +66,7 @@ export class BmoniAdapter implements IFinancialProviderAdapter {
         success: false,
         status: 'UNAVAILABLE',
         providerStatus: 'NOT_CONNECTED',
+        isSettled: false,
         errorMessage: 'BMONI provider is not connected: credentials and endpoint contract are unavailable. Instruction remains safely persisted in Structura.',
         rawResponse: {
           provider: 'BMONI',
@@ -110,6 +111,7 @@ export class BmoniAdapter implements IFinancialProviderAdapter {
           success: false,
           status: 'REJECTED',
           providerStatus: 'REJECTED',
+          isSettled: false,
           errorMessage: responseBody.message || `BMONI API returned status ${response.status}`,
           rawResponse: responseBody,
         };
@@ -121,6 +123,7 @@ export class BmoniAdapter implements IFinancialProviderAdapter {
         providerReference: responseBody.reference || responseBody.transactionId,
         providerTransactionId: responseBody.transactionId,
         providerStatus: 'ACCEPTED',
+        isSettled: false,
         rawResponse: responseBody,
       };
     } catch (error: any) {
@@ -128,6 +131,7 @@ export class BmoniAdapter implements IFinancialProviderAdapter {
         success: false,
         status: 'FAILED',
         providerStatus: 'UNAVAILABLE',
+        isSettled: false,
         errorMessage: error?.message || 'Network or communication failure reaching BMONI provider.',
       };
     }

@@ -514,7 +514,8 @@ export type AuditAction =
   | 'PAYMENT_CONFIRMATION_RECEIVED'
   | 'SETTLEMENT_CONFIRMED'
   | 'FINANCIAL_RECONCILIATION_REQUIRED'
-  | 'FINANCIAL_RECONCILIATION_COMPLETED';
+  | 'FINANCIAL_RECONCILIATION_COMPLETED'
+  | 'FINANCIAL_RECONCILIATION_RESOLVED';
 
 export interface AuditEvent {
   id: string;
@@ -727,6 +728,7 @@ export interface ProjectMilestone {
 
   // Associations
   relatedEvidenceIds: string[];
+  assignedContractorId?: string;
   activeSubmissionId?: string;
   latestReviewId?: string;
   activeInspectionId?: string;
@@ -1663,9 +1665,11 @@ export interface SettlementRecord {
   settledCurrency: string;
   settledAt: string;
   providerReference: string;
+  providerTransactionId?: string;
   verifiedByProviderEvidence: boolean;
   evidencePayloadHash?: string;
   settlementNotes?: string;
+  rawProviderEvidence?: Record<string, any>;
 }
 
 export type ReconciliationStatus = 'PENDING' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED';

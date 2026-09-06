@@ -4,13 +4,13 @@ export interface ProviderSubmissionRequest {
   instructionId: string;
   instructionNumber: string;
   projectId: string;
-  milestoneId: string;
+  milestoneId?: string;
   amountUSD: number;
   currency: string;
   recipientUserId: string;
   recipientName?: string;
   idempotencyKey: string;
-  governanceReference: string; // Owner decision reference
+  governanceReference?: string; // Owner decision reference
   metadata?: Record<string, any>;
 }
 
@@ -20,6 +20,7 @@ export interface ProviderSubmissionResponse {
   providerReference?: string;
   providerTransactionId?: string;
   providerStatus: FinancialProviderStatus;
+  isSettled?: boolean;
   errorMessage?: string;
   rawResponse?: Record<string, any>;
 }
@@ -29,6 +30,7 @@ export interface WebhookEventPayload {
   eventType: string;
   instructionId?: string;
   providerReference?: string;
+  providerTransactionId?: string;
   status: 'ACCEPTED' | 'REJECTED' | 'PAYMENT_CONFIRMED' | 'SETTLED' | 'FAILED';
   amountUSD?: number;
   currency?: string;
