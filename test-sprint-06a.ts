@@ -406,7 +406,7 @@ async function runSprint06ATests() {
     grossAmountUSD: 75000,
     retainageWithheldUSD: 7500,
     netPayableUSD: 67500,
-    status: 'AUTHORIZED',
+    status: 'AUTHORIZED_FOR_FINANCIAL_PROCESSING',
     providerName: 'BMONI',
     providerTransactionId: undefined,
     idempotencyKey: `idem_key_${Date.now()}`,
@@ -416,23 +416,23 @@ async function runSprint06ATests() {
 
   const createdInstruction = await financialInstructionRepository.createInstruction(testInstruction);
   assert(
-    createdInstruction.id === instructionId && createdInstruction.status === 'AUTHORIZED',
+    createdInstruction.id === instructionId && createdInstruction.status === 'AUTHORIZED_FOR_FINANCIAL_PROCESSING',
     'FinancialBoundary',
-    'Financial instruction created with strictly AUTHORIZED status (not PAID)'
+    'Financial instruction created with strictly AUTHORIZED_FOR_FINANCIAL_PROCESSING status (not PAID)'
   );
 
   // Test 27: AUTHORIZED status is distinct from SETTLED
   assert(
     createdInstruction.status !== 'SETTLED',
     'FinancialBoundary',
-    'AUTHORIZED status is strictly distinct from SETTLED'
+    'AUTHORIZED_FOR_FINANCIAL_PROCESSING is strictly distinct from SETTLED'
   );
 
   // Test 28: AUTHORIZED status is distinct from FUNDS_RELEASED
   assert(
-    createdInstruction.status !== 'FUNDS_RELEASED',
+    !['PAID', 'FUNDS_RELEASED'].includes(createdInstruction.status),
     'FinancialBoundary',
-    'AUTHORIZED status is strictly distinct from FUNDS_RELEASED'
+    'AUTHORIZED_FOR_FINANCIAL_PROCESSING cannot be represented as PAID or FUNDS_RELEASED'
   );
 
   // Test 29: Financial idempotency check prevents duplicate execution
