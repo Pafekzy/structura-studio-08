@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { getFirebaseFirestore } from '../auth/firebaseAdmin';
 import { ensureDemoDataSeeded, getDemoProjectById, getDemoAppointmentsByProject } from '../data/demoSeed';
+import { safeAtomicWriteJsonFile, safeReadJsonFile, ensureDirectoryExists } from '../utils/atomicPersistence';
 
 export type ProjectRole = 
   | 'OWNER_CLIENT'
@@ -177,44 +178,30 @@ class FileProjectRepository implements IProjectRepository {
 
   private ensureDataDir() {
     const dataDir = path.join(process.cwd(), 'data');
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
+    ensureDirectoryExists(dataDir);
     if (!fs.existsSync(this.projectsFile)) {
-      fs.writeFileSync(this.projectsFile, JSON.stringify([], null, 2));
+      safeAtomicWriteJsonFile(this.projectsFile, []);
     }
     if (!fs.existsSync(this.appointmentsFile)) {
-      fs.writeFileSync(this.appointmentsFile, JSON.stringify([], null, 2));
+      safeAtomicWriteJsonFile(this.appointmentsFile, []);
     }
     ensureDemoDataSeeded();
   }
 
   private readProjects(): StoredProject[] {
-    try {
-      if (!fs.existsSync(this.projectsFile)) return [];
-      const raw = fs.readFileSync(this.projectsFile, 'utf-8');
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return safeReadJsonFile<StoredProject[]>(this.projectsFile, []);
   }
 
   private writeProjects(projects: StoredProject[]) {
-    fs.writeFileSync(this.projectsFile, JSON.stringify(projects, null, 2));
+    safeAtomicWriteJsonFile(this.projectsFile, projects);
   }
 
   private readAppointments(): ProjectAppointment[] {
-    try {
-      if (!fs.existsSync(this.appointmentsFile)) return [];
-      const raw = fs.readFileSync(this.appointmentsFile, 'utf-8');
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return safeReadJsonFile<ProjectAppointment[]>(this.appointmentsFile, []);
   }
 
   private writeAppointments(appts: ProjectAppointment[]) {
-    fs.writeFileSync(this.appointmentsFile, JSON.stringify(appts, null, 2));
+    safeAtomicWriteJsonFile(this.appointmentsFile, appts);
   }
 
   async createProject(project: StoredProject): Promise<StoredProject> {

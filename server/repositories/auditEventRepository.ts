@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getFirebaseFirestore } from '../auth/firebaseAdmin';
+import { safeAtomicWriteJsonFile, safeReadJsonFile, ensureDirectoryExists } from '../utils/atomicPersistence';
 
 export type AuditAction =
   | 'ORGANIZATION_CREATED'
@@ -78,7 +79,12 @@ export type AuditAction =
   | 'SETTLEMENT_CONFIRMED'
   | 'FINANCIAL_RECONCILIATION_REQUIRED'
   | 'FINANCIAL_RECONCILIATION_COMPLETED'
-  | 'FINANCIAL_RECONCILIATION_RESOLVED';
+  | 'FINANCIAL_RECONCILIATION_RESOLVED'
+  | 'AUTHENTICATION_FAILURE'
+  | 'AUTHORIZATION_DENIED'
+  | 'CONFIGURATION_ERROR'
+  | 'PERSISTENCE_FAILURE'
+  | 'SECURITY_EVENT';
 
 export interface AuditEvent {
   id: string;
@@ -135,30 +141,23 @@ class FileAuditEventRepository implements IAuditEventRepository {
 
   private ensureFile() {
     const dataDir = path.join(process.cwd(), 'data');
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
+    ensureDirectoryExists(dataDir);
     if (!fs.existsSync(this.file)) {
-      fs.writeFileSync(this.file, JSON.stringify([], null, 2));
+      safeAtomicWriteJsonFile(this.file, []);
     }
   }
 
   private readEvents(): AuditEvent[] {
-    try {
-      if (!fs.existsSync(this.file)) return [];
-      const raw = fs.readFileSync(this.file, 'utf-8');
-      return JSON.parse(raw);
-    } catch {
-      return [];
-    }
+    return safeReadJsonFile<AuditEvent[]>(this.file, []);
   }
 
   private writeEvents(events: AuditEvent[]) {
-    fs.writeFileSync(this.file, JSON.stringify(events, null, 2));
+    safeAtomicWriteJsonFile(this.file, events);
   }
 
   async record(event: AuditEvent): Promise<AuditEvent> {
     const events = this.readEvents();
+    // Prepend new event for latest-first order
     events.unshift(event);
     this.writeEvents(events);
     return event;

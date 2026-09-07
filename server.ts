@@ -16,8 +16,23 @@ import { handoverRouter } from './server/routes/handoverRoutes';
 import { executiveReportingRouter } from './server/routes/executiveReportingRoutes';
 import { financialRouter } from './server/routes/financialRoutes';
 import { ensureDemoDataSeeded } from './server/data/demoSeed';
+import { correlationMiddleware } from './server/middleware/correlationMiddleware';
+import { securityHeadersMiddleware } from './server/middleware/securityHeaders';
+import { authRateLimiter, aiRateLimiter, financialRateLimiter, webhookRateLimiter } from './server/middleware/rateLimiter';
+import { errorHandler } from './server/middleware/errorHandler';
+import { validateEnvironment } from './server/config/environment';
+import { logger } from './server/utils/logger';
 
 dotenv.config();
+
+// Validate runtime environment
+const envValidation = validateEnvironment();
+logger.info(`Structura environment initialized in [${envValidation.mode}] mode.`, 'ServerStartup', {
+  authMode: envValidation.authMode,
+  hasGeminiKey: envValidation.hasGeminiKey,
+  geminiModel: envValidation.geminiModel,
+  isBmoniConfigured: envValidation.isBmoniConfigured,
+});
 
 // Ensure canonical development & demo dataset is seeded for local persistence
 ensureDemoDataSeeded();
@@ -25,10 +40,56 @@ ensureDemoDataSeeded();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json({ limit: '25mb' }));
+// Security & Correlation Middlewares
+app.use(correlationMiddleware);
+app.use(securityHeadersMiddleware);
+app.use(express.json({ limit: '10mb' }));
 
-// Authentication & User Profile Routes (Sprint 02)
-app.use('/api/auth', authRouter);
+// Health check endpoint (Liveness)
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    hasGeminiKey: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0),
+    correlationId: req.correlationId,
+  });
+});
+
+// Operational Readiness endpoint (Readiness)
+app.get('/api/readiness', (req, res) => {
+  const currentEnv = validateEnvironment();
+  res.status(currentEnv.isValid ? 200 : 503).json({
+    status: currentEnv.isValid ? 'ready' : 'not_ready',
+    mode: currentEnv.mode,
+    auth: {
+      mode: currentEnv.authMode,
+      isConfigured: currentEnv.authMode === 'sandbox' || currentEnv.isFirebaseAdminConfigured,
+      firebaseAdminAvailable: currentEnv.isFirebaseAdminConfigured,
+    },
+    ai: {
+      model: currentEnv.geminiModel,
+      isConfigured: currentEnv.hasGeminiKey,
+      status: currentEnv.hasGeminiKey ? 'AVAILABLE' : 'DEGRADED_UNCONFIGURED',
+    },
+    financialProvider: {
+      provider: 'BMONI',
+      isConfigured: currentEnv.isBmoniConfigured,
+      status: currentEnv.isBmoniConfigured ? 'CONNECTED' : 'NOT_CONNECTED',
+    },
+    persistence: {
+      status: 'AVAILABLE',
+      type: 'HYBRID_FILE_FIRESTORE',
+    },
+    errors: currentEnv.errors,
+    warnings: currentEnv.warnings,
+    correlationId: req.correlationId,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// Authentication & User Profile Routes (Sprint 02) with Rate Limiting
+app.use('/api/auth', authRateLimiter, authRouter);
 app.use('/api/users', authRouter);
 
 // Organization Governance & Project Appointments Routes (Sprint 03)
@@ -52,8 +113,13 @@ app.use('/api', closeoutRouter);
 app.use('/api', handoverRouter);
 app.use('/api', executiveReportingRouter);
 
-// Financial Execution Readiness & BMONI Provider Boundary (Sprint 05B)
+// Financial Execution Readiness & BMONI Provider Boundary (Sprint 05B) with Rate Limiting
+app.use('/api/projects/:projectId/financial', financialRateLimiter);
+app.use('/api/financial/webhook', webhookRateLimiter);
 app.use('/api', financialRouter);
+
+// AI Surface Rate Limiting
+app.use('/api/ai', aiRateLimiter);
 
 // Lazy initialization of GoogleGenAI
 let aiClient: GoogleGenAI | null = null;
@@ -557,6 +623,9 @@ Always remind the user when appropriate that AI assists and informs, but license
     res.status(500).json({ error: error?.message || 'Failed to get advisor response' });
   }
 });
+
+// Centralized Safe API Error Handler
+app.use(errorHandler);
 
 // Setup Vite middleware in dev or static serving in production
 async function startServer() {

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { getFirebaseFirestore } from '../auth/firebaseAdmin';
 import { AIInspectionAnalysis } from '../../src/types';
+import { safeAtomicWriteJsonFile, safeReadJsonFile, ensureDirectoryExists } from '../utils/atomicPersistence';
 
 export interface IAIInspectionRepository {
   createAnalysis(analysis: AIInspectionAnalysis): Promise<AIInspectionAnalysis>;
@@ -24,36 +25,20 @@ export class HybridAIInspectionRepository implements IAIInspectionRepository {
   }
 
   private initFiles(): void {
-    try {
-      if (!fs.existsSync(this.dataDir)) {
-        fs.mkdirSync(this.dataDir, { recursive: true });
-      }
-
-      if (!fs.existsSync(this.file)) {
-        fs.writeFileSync(this.file, JSON.stringify(INITIAL_DEMO_AI_ANALYSES, null, 2), 'utf-8');
-      }
-    } catch (err) {
-      console.warn('[HybridAIInspectionRepository] Local file init error:', err);
+    ensureDirectoryExists(this.dataDir);
+    if (!fs.existsSync(this.file)) {
+      safeAtomicWriteJsonFile(this.file, INITIAL_DEMO_AI_ANALYSES);
     }
   }
 
   private readAll(): AIInspectionAnalysis[] {
-    try {
-      this.initFiles();
-      const content = fs.readFileSync(this.file, 'utf-8');
-      return JSON.parse(content || '[]');
-    } catch {
-      return [...INITIAL_DEMO_AI_ANALYSES];
-    }
+    this.initFiles();
+    return safeReadJsonFile<AIInspectionAnalysis[]>(this.file, INITIAL_DEMO_AI_ANALYSES);
   }
 
   private writeAll(items: AIInspectionAnalysis[]): void {
-    try {
-      this.initFiles();
-      fs.writeFileSync(this.file, JSON.stringify(items, null, 2), 'utf-8');
-    } catch (err) {
-      console.error('[HybridAIInspectionRepository] Failed to write analyses:', err);
-    }
+    this.initFiles();
+    safeAtomicWriteJsonFile(this.file, items);
   }
 
   private getFirestoreCol() {

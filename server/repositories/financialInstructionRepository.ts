@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { getFirebaseFirestore } from '../auth/firebaseAdmin';
 import { FinancialInstruction } from '../../src/types';
+import { safeAtomicWriteJsonFile, safeReadJsonFile, ensureDirectoryExists } from '../utils/atomicPersistence';
 
 export interface IFinancialInstructionRepository {
   createInstruction(instruction: FinancialInstruction): Promise<FinancialInstruction>;
@@ -25,41 +26,21 @@ class FinancialInstructionRepository implements IFinancialInstructionRepository 
 
   constructor() {
     const dataDir = path.join(process.cwd(), 'data');
-    if (!fs.existsSync(dataDir)) {
-      try {
-        fs.mkdirSync(dataDir, { recursive: true });
-      } catch (e) {
-        // Ignored
-      }
-    }
+    ensureDirectoryExists(dataDir);
     this.filePath = path.join(dataDir, 'financial_instructions.json');
     this.ensureLoaded();
   }
 
   private ensureLoaded(): void {
     if (this.isLoaded) return;
-    try {
-      if (fs.existsSync(this.filePath)) {
-        const raw = fs.readFileSync(this.filePath, 'utf-8');
-        const items: FinancialInstruction[] = JSON.parse(raw);
-        items.forEach((item) => this.cache.set(item.id, item));
-      } else {
-        INITIAL_DEMO_FINANCIAL_INSTRUCTIONS.forEach((item) => this.cache.set(item.id, item));
-        this.persist();
-      }
-    } catch (e) {
-      console.warn('[FinancialInstructionRepository] Failed to read from disk, using empty cache', e);
-    }
+    const items = safeReadJsonFile<FinancialInstruction[]>(this.filePath, INITIAL_DEMO_FINANCIAL_INSTRUCTIONS);
+    items.forEach((item) => this.cache.set(item.id, item));
     this.isLoaded = true;
   }
 
   private persist(): void {
-    try {
-      const items = Array.from(this.cache.values());
-      fs.writeFileSync(this.filePath, JSON.stringify(items, null, 2), 'utf-8');
-    } catch (e) {
-      console.warn('[FinancialInstructionRepository] Failed to persist to disk', e);
-    }
+    const items = Array.from(this.cache.values());
+    safeAtomicWriteJsonFile(this.filePath, items);
   }
 
   async createInstruction(instruction: FinancialInstruction): Promise<FinancialInstruction> {
